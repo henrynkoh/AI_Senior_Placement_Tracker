@@ -1,0 +1,29 @@
+name: Prototype verification
+on:
+  push:
+    branches: [main, 'develop/**']
+  pull_request:
+jobs:
+  static-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check JavaScript syntax
+        run: node --check app.js
+      - name: Verify required screens and restrictions
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const html = fs.readFileSync('index.html','utf8');
+          const js = fs.readFileSync('app.js','utf8');
+          for(const page of ['dashboard','cases','intake','checklist','followup','weekly','sheets','sources','qa']) assert(html.includes('data-page="'+page+'"'), 'Missing navigation '+page);
+          for(const phrase of ['fictional','Medicaid','No backend','No real']) assert((html+' '+js).toLowerCase().includes(phrase.toLowerCase()), 'Missing disclosure '+phrase);
+          assert(js.includes('localStorage'), 'Missing demo persistence');
+          assert(js.includes('prohibited('), 'Missing demo content guard');
+          assert(js.includes('Consent guard'), 'Missing consent guard');
+          assert(!/SUPABASE_SERVICE_ROLE_KEY\s*=/.test(html+' '+js), 'Embedded service credential');
+          console.log('Prototype static checks passed; NOT a production security or end-to-end test.');
+          NODE
