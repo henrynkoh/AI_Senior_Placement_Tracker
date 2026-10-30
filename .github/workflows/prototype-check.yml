@@ -11,7 +11,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check JavaScript syntax
-        run: node --check app.js
+        run: |
+          node --check app.js
+          node --check email-demo.js
+          node --check lib/email-policy.cjs
+          node --check api/email/send.js
+          node --check api/email/status.js
+      - name: Run email policy unit tests
+        run: node --test tests/email-policy.test.cjs
       - name: Verify required screens and restrictions
         run: |
           node - <<'NODE'
@@ -19,7 +26,7 @@ jobs:
           const assert = require('node:assert/strict');
           const html = fs.readFileSync('index.html','utf8');
           const js = fs.readFileSync('app.js','utf8');
-          for(const page of ['dashboard','cases','intake','checklist','followup','weekly','sheets','sources','qa']) assert(html.includes('data-page="'+page+'"'), 'Missing navigation '+page);
+          for(const page of ['dashboard','cases','intake','checklist','followup','weekly','sheets','sources','qa','mail']) assert(html.includes('data-page="'+page+'"'), 'Missing navigation '+page);
           for(const phrase of ['fictional','Medicaid','No backend','No real']) assert((html+' '+js).toLowerCase().includes(phrase.toLowerCase()), 'Missing disclosure '+phrase);
           assert(js.includes('localStorage'), 'Missing demo persistence');
           assert(js.includes('prohibited('), 'Missing demo content guard');
