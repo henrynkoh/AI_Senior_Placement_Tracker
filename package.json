@@ -1,0 +1,13 @@
+{
+  "name": "south-sound-senior-placement-fictional-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fictional-only browser-local demo. No client intake or production data.",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "check:syntax": "node --check app.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}
