@@ -1,0 +1,39 @@
+name: Next.js concept verification
+on:
+  push:
+    branches: ['feature/nextjs-southsound-site']
+    paths:
+      - 'web-next/**'
+      - '.github/workflows/nextjs-check.yml'
+  pull_request:
+    paths:
+      - 'web-next/**'
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: web-next
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build Next.js and validate TypeScript
+        run: npm run build
+      - name: Verify no live client intake or email delivery enabled
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),assert=require('node:assert/strict');
+          const status=fs.readFileSync('app/api/status/route.ts','utf8');
+          const page=fs.readFileSync('app/page.tsx','utf8');
+          assert(status.includes('deliveryEnabled: false'));
+          assert(status.includes('productionIntake: false'));
+          assert(page.includes('FICTIONAL CONCEPT'));
+          assert(page.includes('No real client information'));
+          console.log('Concept safety checks passed.');
+          NODE
