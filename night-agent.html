@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>SoundCare AI LLM — Night Agent Demo</title>
+<style>body{font:16px system-ui,sans-serif;background:#f6f8f5;color:#20382f;margin:0}header,main{max-width:1050px;margin:auto;padding:22px}header{background:#e7efe7}h1{margin:8px 0}.warn{background:#fff2cf;padding:14px;border-left:5px solid #a76500}section{background:white;border:1px solid #cbd8d0;border-radius:10px;padding:16px;margin:16px 0}label{display:inline-block;margin:8px 18px 8px 0}input{font:inherit;width:105px;padding:7px}button{padding:10px 14px;border-radius:6px;border:1px solid #345c49;background:#e2f0e6;cursor:pointer;margin:5px}button.primary{background:#24583d;color:white}button:disabled{opacity:.5}table{border-collapse:collapse;width:100%;font-size:14px}td,th{padding:9px;border-bottom:1px solid #d9e2dc;text-align:left}th{background:#e9f2eb}.scroll{overflow-x:auto}.bad{color:#a52b20;font-weight:bold}.good{color:#22663d;font-weight:bold}.muted{color:#56665e}code{overflow-wrap:anywhere}a{color:#175e40}</style></head>
+<body><header><a href="/">← Tracker</a><h1>SoundCare AI LLM · Low-Cost Night Agent + Usage Guard</h1><p>가상 상담 10건 · 야간 일괄처리 시뮬레이션 · 외부 AI API 호출 없음</p></header>
+<main><div class="warn"><strong>FICTIONAL DEMO ONLY.</strong> 실제 개인정보 입력 금지. AI 요금은 계산용 가정이며 실제 청구액이 아닙니다. 자동 이메일, 외부 공유, 결제, 일정 예약 및 실제 야간 실행은 없습니다.</div>
+<section><h2>사용량 제한 설정 (USD)</h2><label>실행 총예산 <input id="budget" type="number" min="0" max="100" step=".001" value=".025"></label><label>건당 한도 <input id="percase" type="number" min="0" max="100" step=".001" value=".006"></label><label>입력 1M 토큰당 $ <input id="inputrate" type="number" min="0" max="1000" step=".01" value=".25"></label><label>출력 1M 토큰당 $ <input id="outputrate" type="number" min="0" max="1000" step=".01" value="1.25"></label><p class="muted">단가는 임의의 시험값입니다. 공급업체 공식 요금 및 실제 토큰 사용량으로 교체하기 전에는 비용 예측에 사용하지 마세요.</p>
+<button class="primary" id="run">가상 야간 일괄처리 실행</button><button id="reset">초기화</button><button id="export">CSV 다운로드</button></section>
+<section><h2>실행 요약</h2><div id="summary" role="status">아직 실행하지 않았습니다.</div></section>
+<section><h2>10건 결과</h2><div class="scroll"><table><thead><tr><th>Case</th><th>Consent</th><th>Human approval</th><th>Token in/out</th><th>예상비용</th><th>처리</th><th>다음 조치</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+<section><h2>Audit Log</h2><p class="muted">시뮬레이션 내역만 표시합니다. 저장·전송·실제 실행하지 않습니다.</p><div id="audit"></div></section></main>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const cases=Array.from({length:10},(_,i)=>({id:"SC-DEMO-"+String(i+1).padStart(3,"0"),consent:i===2?"Pending":i===7?"Declined":"Granted (fictional)",approval:i%3===0?"Pending":"Approved (fictional)",input:1800+i*180,output:320+i*45}));
+let results=[],logs=[];
+const money=n=>"$"+n.toFixed(6);
+function cost(c,ri,ro){return (c.input*ri+c.output*ro)/1000000}
+function safeNumber(id){const n=Number($(id).value);if(!Number.isFinite(n)||n<0||n>1000)throw Error("Invalid non-negative setting: "+id);return n}
+function run(){
+try{
+ const budget=safeNumber("budget"),percase=safeNumber("percase"),ri=safeNumber("inputrate"),ro=safeNumber("outputrate");
+ let spent=0,processed=0,blocked=0;results=[];logs=[];
+ for(const c of cases){
+  const estimate=cost(c,ri,ro);
+  let status="SIMULATED",action="Prepare internal follow-up draft only";
+  if(estimate>percase+1e-12){status="BLOCKED_PER_CASE_LIMIT";action="No processing; review budget"}
+  else if(spent+estimate>budget+1e-12){status="BLOCKED_TOTAL_BUDGET";action="No processing; review budget"}
+  else {spent+=estimate;processed++}
+  if(status.startsWith("BLOCKED"))blocked++;
+  const externalAllowed=false; // hard guard: no network, no messaging, no sharing
+  if(c.consent!=="Granted (fictional)"||c.approval!=="Approved (fictional)")action="Internal review only — consent/approval gate";
+  results.push({...c,estimate,status,action,externalAllowed});
+  logs.push(c.id+": "+status+"; external action BLOCKED; consent="+c.consent+"; approval="+c.approval);
+ }
+ $("summary").textContent="Processed "+processed+"/10 · Budget-blocked "+blocked+" · Estimated "+money(spent)+" / "+money(budget)+" · External actions 0 · All records fictional";
+ $("rows").replaceChildren();
+ for(const r of results){const tr=document.createElement("tr");[r.id,r.consent,r.approval,r.input+" / "+r.output,money(r.estimate),r.status,r.action].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.append(td)});$("rows").append(tr)}
+ $("audit").replaceChildren();for(const l of logs){const p=document.createElement("p");p.textContent=l;$("audit").append(p)}
+}catch(e){$("summary").textContent="설정 오류: "+e.message}
+}
+function reset(){results=[];logs=[];$("summary").textContent="초기화 완료. 실행하지 않았습니다.";$("rows").replaceChildren();$("audit").replaceChildren()}
+function exportCSV(){if(!results.length)return alert("먼저 시뮬레이션을 실행하세요.");const keys=["id","consent","approval","input","output","estimate","status","action","externalAllowed"];const lines=[keys.join(","),...results.map(r=>keys.map(k=>'"'+String(r[k]).replaceAll('"','""')+'"').join(","))];const blob=new Blob([lines.join("\r\n")],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="SoundCare_Night_Guard_FICTIONAL.csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+$("run").addEventListener("click",run);$("reset").addEventListener("click",reset);$("export").addEventListener("click",exportCSV);
+</script></body></html>
